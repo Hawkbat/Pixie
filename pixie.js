@@ -9,6 +9,7 @@ let menuFileEle = document.getElementById('menu-file')
 let menuEditEle = document.getElementById('menu-edit')
 let menuViewEle = document.getElementById('menu-view')
 let menuHelpEle = document.getElementById('menu-help')
+let sectionHelpEle = document.getElementById('section-help')
 let palListEle = document.getElementById('pal-list')
 let setListEle = document.getElementById('set-list')
 let mapListEle = document.getElementById('map-list')
@@ -1031,6 +1032,14 @@ new ContextMenu(menuFileEle).option('New Project', 'N', () => {
 	a.click()
 	a.remove()
 	URL.revokeObjectURL(objUrl)
+}).spacer().option('Download Conversion Script', '', () => {
+	let a = document.createElement('a')
+	a.href = 'pixie-convert.js'
+	a.target = '_blank'
+	a.setAttribute('download', 'pixie-convert.js')
+	document.body.appendChild(a)
+	a.click()
+	a.remove()
 }).spacer().option('Reload Window', '', () => {
 	window.location.reload()
 })
@@ -1039,4 +1048,10 @@ new ContextMenu(menuViewEle).option('Toggle Grid', 'G', () => {
 	setGridEle.hidden = !setGridEle.hidden
 	tileGridEle.hidden = !tileGridEle.hidden
 	mapGridEle.hidden = !mapGridEle.hidden
+}).option('Toggle Help', '?', () => {
+	sectionHelpEle.classList.toggle('hide')
+})
+
+new ContextMenu(menuHelpEle).option('Toggle Help', '', () => {
+	sectionHelpEle.classList.toggle('hide')
 })

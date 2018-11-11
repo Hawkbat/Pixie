@@ -54,8 +54,11 @@ section > :first-child {
 }
 
 section:last-child {
-	flex: 1 1 0;
 	border-right: 0;
+}
+
+section.stretch {
+	flex: 1 1 auto;
 }
 
 h3 {
@@ -282,4 +285,18 @@ menu > li > span {
 
 menu > hr {
 	margin: 2px 5px;
+}
+
+iframe {
+	flex: 1 0 0;
+	background: #aaa;
+	border-left: 0;
+	border-right: 0;
+	border-bottom: 0;
+	width: 512px;
+	font-size: 12px;
+}
+
+.hide {
+	display: none !important;
 }

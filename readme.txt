@@ -15,7 +15,9 @@ Pixie is a graphics application for creating sprites, palettes, tilesets, and ti
 3. Create and edit tilesets, palettes, and maps as desired
 4. Save your project somewhere (File > Save Project...)
 5. File > Download Conversion Script
-6. Run the script with the command `node pixie-convert.js -o "path/to/whatever.bin" -i "path/to/includes/whatever.inc" "path/to/yourProject.pixie-project"` (change the paths and filenames to match your ASM project's structure)
+6. Run the script with the command:
+    `node pixie-convert.js -o "path/to/whatever.bin" -i "path/to/includes/whatever.inc" "path/to/yourProject.pixie-project"`
+    (change the paths and filenames to match your ASM project's structure)
 7. TBD (project implementation steps)
 
 
