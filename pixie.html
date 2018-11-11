@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Pixie Editor</title>
+	<link rel="stylesheet" href="pixie.css">
+</head>
+
+<body>
+	<header>
+		<li id="menu-file">File</li>
+		<li id="menu-edit">Edit</li>
+		<li id="menu-view">View</li>
+		<li id="menu-help">Help</li>
+	</header>
+	<main>
+		<section>
+			<h3>Project Options</h3>
+			<fieldset>
+				<label>
+					<span>Name</span>
+					<input type="text" id="project-name" size="8">
+				</label>
+				<label>
+					<span>Mode</span>
+					<select id="project-mode">
+						<option value="0">Gameboy Color</option>
+					</select>
+				</label>
+			</fieldset>
+			<h3>Tileset List</h3>
+			<aside><button id="set-insert">+</button><button id="set-remove">-</button></aside>
+			<article id="set-list"></article>
+			<h3>Tileset Options</h3>
+			<fieldset>
+				<label>
+					<span>Name</span>
+					<input type="text" id="set-name" size="8">
+				</label>
+				<label>
+					<span>Export</span>
+					<input type="checkbox" id="set-flags-export">
+				</label>
+			</fieldset>
+			<h3>Palette List</h3>
+			<aside><button id="pal-insert">+</button><button id="pal-remove">-</button></aside>
+			<article id="pal-list"></article>
+			<h3>Palette Options</h3>
+			<fieldset>
+				<label>
+					<span>Name</span>
+					<input type="text" id="pal-name" size="8">
+				</label>
+				<label>
+					<span>Export</span>
+					<input type="checkbox" id="pal-flags-export">
+				</label>
+			</fieldset>
+		</section>
+		<section>
+			<h3>Tileset</h3>
+			<figure>
+				<div class="canvas-wrap">
+					<canvas id="set-canvas" width="128" height="64"></canvas>
+					<div id="set-grid" class="canvas-grid"></div>
+					<div id="set-selector" class="tile-selector"></div>
+				</div>
+				<div id="set-tooltip" class="tooltip"></div>
+			</figure>
+			<h3>Tile</h3>
+			<figure>
+				<div class="canvas-wrap">
+					<canvas id="tile-canvas" width="8" height="8"></canvas>
+					<div id="tile-grid" class="canvas-grid"></div>
+				</div>
+				<div id="tile-tooltip" class="tooltip"></div>
+			</figure>
+			<h3>Colors</h3>
+			<figure>
+				<div class="canvas-wrap">
+					<canvas id="pal-canvas" width="4" height="1"></canvas>
+					<div id="pal-selector" class="tile-selector"></div>
+				</div>
+				<div id="pal-tooltip" class="tooltip"></div>
+			</figure>
+			<h3>Color Options</h3>
+			<fieldset>
+				<label>
+					<span>R</span>
+					<input type="range" id="col-r-range" min="0" max="31" value="0">
+					<input type="number" id="col-r-value" min="0" max="31" value="0">
+				</label>
+				<label>
+					<span>G</span>
+					<input type="range" id="col-g-range" min="0" max="31" value="0">
+					<input type="number" id="col-g-value" min="0" max="31" value="0">
+				</label>
+				<label>
+					<span>B</span>
+					<input type="range" id="col-b-range" min="0" max="31" value="0">
+					<input type="number" id="col-b-value" min="0" max="31" value="0">
+				</label>
+			</fieldset>
+		</section>
+		<section>
+			<h3>Map List</h3>
+			<aside><button id="map-insert">+</button><button id="map-remove">-</button></aside>
+			<article id="map-list"></article>
+			<h3>Map Options</h3>
+			<fieldset>
+				<label>
+					<span>Name</span>
+					<input type="text" id="map-name" size="8">
+				</label>
+				<label>
+					<span>Export</span>
+					<input type="checkbox" id="map-flags-export">
+				</label>
+			</fieldset>
+		</section>
+		<section>
+			<h3>Map</h3>
+			<figure>
+				<div class="canvas-wrap">
+					<canvas id="map-canvas" width="256" height="256"></canvas>
+					<div id="map-grid" class="canvas-grid"></div>
+				</div>
+				<div id="map-tooltip" class="tooltip"></div>
+			</figure>
+		</section>
+	</main>
+	<footer>
+		<i id="tooltip">&nbsp;</i>
+	</footer>
+	<script src="pixie.js"></script>
+</body>
+
+</html>
