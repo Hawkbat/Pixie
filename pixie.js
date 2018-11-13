@@ -1,7 +1,7 @@
 let VERSION = 1
 let MODES = { GBC: 0 }
 let GBC_COLOR_SCALE = [0, 2, 4, 7, 12, 18, 25, 34, 42, 52, 62, 73, 85, 97, 109, 121, 134, 146, 158, 170, 182, 193, 203, 213, 221, 230, 237, 243, 248, 251, 253, 255]
-let DATA_FLAGS = { EXPORT: 1 }
+let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2 }
 
 let contextMenu = null
 
@@ -46,7 +46,8 @@ let mapTooltipEle = document.getElementById('map-tooltip')
 let tooltipEle = document.getElementById('tooltip')
 let palFlagsExportEle = document.getElementById('pal-flags-export')
 let setFlagsExportEle = document.getElementById('set-flags-export')
-let mapFlagsExportEle = document.getElementById('map-flags-export')
+let mapFlagsExportTilesEle = document.getElementById('map-flags-export-tiles')
+let mapFlagsExportAttribsEle = document.getElementById('map-flags-export-attribs')
 
 let palI = 0
 let colI = 0
@@ -569,7 +570,8 @@ function selectMap(index) {
 	}
 	mapI = index
 	mapNameEle.value = maps[index].name
-	mapFlagsExportEle.checked = (maps[index].flags & DATA_FLAGS.EXPORT) != 0
+	mapFlagsExportTilesEle.checked = (maps[index].flags & DATA_FLAGS.EXPORT) != 0
+	mapFlagsExportAttribsEle.checked = (maps[index].flags & DATA_FLAGS.EXPORT2) != 0
 	selectSet(maps[index].set)
 	selectUnderMap(-1)
 	updateMapCanvas()
@@ -734,10 +736,16 @@ function setSetExport(b) {
 	setFlagsExportEle.checked = (sets[setI].flags & DATA_FLAGS.EXPORT) != 0
 }
 
-function setMapExport(b) {
+function setMapExportTiles(b) {
 	if (b) maps[mapI].flags |= DATA_FLAGS.EXPORT
 	else maps[mapI].flags &= ~DATA_FLAGS.EXPORT
-	mapFlagsExportEle.checked = (maps[mapI].flags & DATA_FLAGS.EXPORT) != 0
+	mapFlagsExportTilesEle.checked = (maps[mapI].flags & DATA_FLAGS.EXPORT) != 0
+}
+
+function setMapExportAttribs(b) {
+	if (b) maps[mapI].flags |= DATA_FLAGS.EXPORT2
+	else maps[mapI].flags &= ~DATA_FLAGS.EXPORT2
+	mapFlagsExportAttribsEle.checked = (maps[mapI].flags & DATA_FLAGS.EXPORT2) != 0
 }
 
 class ContextMenu {
@@ -867,7 +875,7 @@ class Tilemap {
 	constructor(index) {
 		this.index = index
 		this.name = ''
-		this.flags = DATA_FLAGS.EXPORT
+		this.flags = DATA_FLAGS.EXPORT | DATA_FLAGS.EXPORT2
 		this.set = 0
 		this.tiles = []
 		for (let i = 0; i < 1024; i++) this.tiles.push({ tile: 0, pal: 0 })
@@ -992,7 +1000,8 @@ projectNameEle.addEventListener('input', e => setProjectName(e.target.value))
 
 palFlagsExportEle.addEventListener('change', e => setPalExport(e.target.checked))
 setFlagsExportEle.addEventListener('change', e => setSetExport(e.target.checked))
-mapFlagsExportEle.addEventListener('change', e => setMapExport(e.target.checked))
+mapFlagsExportTilesEle.addEventListener('change', e => setMapExportTiles(e.target.checked))
+mapFlagsExportAttribsEle.addEventListener('change', e => setMapExportAttribs(e.target.checked))
 
 clearProject()
 insertPalette(0)
@@ -1032,11 +1041,26 @@ new ContextMenu(menuFileEle).option('New Project', 'N', () => {
 	a.click()
 	a.remove()
 	URL.revokeObjectURL(objUrl)
-}).spacer().option('Download Conversion Script', '', () => {
+}).spacer().option('Export to ASM...', 'E', () => {
+	let filename = projectName.replace(/\s+/g, '-')
+	let { error, bin, inc } = convertProject(serializeProject(), filename + '.bin')
+	if (error) {
+		alert(error)
+		return
+	}
+	let buf = new Uint8Array(bin)
+	let blob = new Blob([buf.buffer], { type: 'application/octet-stream' })
+	let objUrl = URL.createObjectURL(blob)
 	let a = document.createElement('a')
-	a.href = 'pixie-convert.js'
-	a.target = '_blank'
-	a.setAttribute('download', 'pixie-convert.js')
+	a.href = objUrl
+	a.setAttribute('download', filename + '.bin')
+	document.body.appendChild(a)
+	a.click()
+	a.remove()
+	URL.revokeObjectURL(objUrl)
+	a = document.createElement('a')
+	a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(inc)
+	a.setAttribute('download', filename + '.asm')
 	document.body.appendChild(a)
 	a.click()
 	a.remove()
