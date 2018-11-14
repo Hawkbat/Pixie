@@ -7,13 +7,17 @@ let convertProject = (function (a, binName) {
 		return s
 	}
 
+	function hex(n) {
+		return '$' + n.toString(16).toUpperCase()
+	}
+
 	let PAL_SIZE = 4 * 2
 	let SET_SIZE = 128 * (64 / 4)
 	let MAP_SIZE = 32 * 32
 
 	let VERSION = 1
 	let MODES = { GBC: 0 }
-	let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2 }
+	let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2, HAS_BANK: 4 }
 
 	let bin = []
 	let inc = ''
@@ -45,6 +49,7 @@ let convertProject = (function (a, binName) {
 		pal.name = decodeString(a, i, len)
 		i += len
 		pal.flags = a[i++]
+		if ((pal.flags & DATA_FLAGS.HAS_BANK) != 0) pal.bank = a[i++]
 		for (let k = 0; k < 4; k++) {
 			let color = [a[i++], a[i++], a[i++]]
 			pal.colors.push(color)
@@ -60,6 +65,7 @@ let convertProject = (function (a, binName) {
 		set.name = decodeString(a, i, len)
 		i += len
 		set.flags = a[i++]
+		if ((set.flags & DATA_FLAGS.HAS_BANK) != 0) set.bank = a[i++]
 		for (let k = 0; k < 128; k++) {
 			let tile = { pal: 0, colors: [] }
 			tile.pal = a[i++]
@@ -81,6 +87,7 @@ let convertProject = (function (a, binName) {
 		map.name = decodeString(a, i, len)
 		i += len
 		map.flags = a[i++]
+		if ((map.flags & DATA_FLAGS.HAS_BANK) != 0) map.bank = a[i++]
 		map.set = a[i++]
 		for (let k = 0; k < 1024; k++) {
 			let tile = { tile: 0, pal: 0 }
@@ -99,8 +106,8 @@ let convertProject = (function (a, binName) {
 	for (let pal of pals) {
 		if ((pal.flags & DATA_FLAGS.EXPORT) == 0) continue
 		let label = pal.name.replace(/\s/g, '')
-		inc += '\nsection "Palette - ' + pal.name + '", romX\n'
-		inc += 'PAL_' + label + ': incbin "' + binName + '", ' + bin.length + ', ' + PAL_SIZE + '\n'
+		inc += '\nsection "Palette - ' + pal.name + '", romX' + ((pal.flags & DATA_FLAGS.HAS_BANK) != 0 ? ', bank[' + hex(pal.bank) + ']' : '') + '\n'
+		inc += 'PAL_' + label + ': incbin "' + binName + '", ' + hex(bin.length) + ', ' + hex(PAL_SIZE) + '\n'
 		for (let c of pal.colors) {
 			let v = c[0] | c[1] << 5 | c[2] << 10
 			bin.push((v & 0x00FF) >> 0)
@@ -112,8 +119,8 @@ let convertProject = (function (a, binName) {
 	for (let set of sets) {
 		if ((set.flags & DATA_FLAGS.EXPORT) == 0) continue
 		let label = set.name.replace(/\s/g, '')
-		inc += '\nsection "Tileset - ' + set.name + '", romX\n'
-		inc += 'SET_' + label + ': incbin "' + binName + '", ' + bin.length + ', ' + SET_SIZE + '\n'
+		inc += '\nsection "Tileset - ' + set.name + '", romX' + ((set.flags & DATA_FLAGS.HAS_BANK) != 0 ? ', bank[' + hex(set.bank) + ']' : '') + '\n'
+		inc += 'SET_' + label + ': incbin "' + binName + '", ' + hex(bin.length) + ', ' + hex(SET_SIZE) + '\n'
 		for (let t of set.tiles) {
 			for (let i = 0; i < 64; i += 8) {
 				let l = 0
@@ -139,7 +146,7 @@ let convertProject = (function (a, binName) {
 			}
 		}
 		inc += 'SET_' + label + '_END:\n'
-		inc += 'SET_ATTRS_' + label + ': incbin "' + binName + '", ' + bin.length + ', ' + MAP_SIZE + '\n'
+		inc += 'SET_ATTRS_' + label + ': incbin "' + binName + '", ' + hex(bin.length) + ', ' + hex(MAP_SIZE) + '\n'
 		let palList = set.tiles.map(t => t.pal).filter((v, i, a) => a.indexOf(v) == i)
 		for (let t of set.tiles) bin.push(palList.indexOf(t.pal) & 0b00000111)
 		inc += 'SET_ATTRS_' + label + '_END:\n'
@@ -158,12 +165,12 @@ let convertProject = (function (a, binName) {
 	for (let map of maps) {
 		if ((map.flags & DATA_FLAGS.EXPORT) == 0) continue
 		let label = map.name.replace(/\s/g, '')
-		inc += '\nsection "Map - ' + map.name + '", romX\n'
-		inc += 'MAP_' + label + ': incbin "' + binName + '", ' + bin.length + ', ' + MAP_SIZE + '\n'
+		inc += '\nsection "Map - ' + map.name + '", romX' + ((map.flags & DATA_FLAGS.HAS_BANK) != 0 ? ', bank[' + hex(map.bank) + ']' : '') + '\n'
+		inc += 'MAP_' + label + ': incbin "' + binName + '", ' + hex(bin.length) + ', ' + hex(MAP_SIZE) + '\n'
 		for (let t of map.tiles) bin.push(0x80 + t.tile)
 		inc += 'MAP_' + label + '_END:\n'
 		if ((map.flags & DATA_FLAGS.EXPORT2) == 0) continue
-		inc += 'MAP_ATTRS_' + label + ': incbin "' + binName + '", ' + bin.length + ', ' + MAP_SIZE + '\n'
+		inc += 'MAP_ATTRS_' + label + ': incbin "' + binName + '", ' + hex(bin.length) + ', ' + hex(MAP_SIZE) + '\n'
 		let palList = map.tiles.map(t => t.pal).filter((v, i, a) => a.indexOf(v) == i)
 		for (let t of map.tiles) bin.push(palList.indexOf(t.pal) & 0b00000111)
 		inc += 'MAP_ATTRS_' + label + '_END:\n'

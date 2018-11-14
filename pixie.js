@@ -1,7 +1,7 @@
 let VERSION = 1
 let MODES = { GBC: 0 }
 let GBC_COLOR_SCALE = [0, 2, 4, 7, 12, 18, 25, 34, 42, 52, 62, 73, 85, 97, 109, 121, 134, 146, 158, 170, 182, 193, 203, 213, 221, 230, 237, 243, 248, 251, 253, 255]
-let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2 }
+let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2, HAS_BANK: 4 }
 
 let contextMenu = null
 
@@ -48,6 +48,9 @@ let palFlagsExportEle = document.getElementById('pal-flags-export')
 let setFlagsExportEle = document.getElementById('set-flags-export')
 let mapFlagsExportTilesEle = document.getElementById('map-flags-export-tiles')
 let mapFlagsExportAttribsEle = document.getElementById('map-flags-export-attribs')
+let palBankEle = document.getElementById('pal-bank')
+let setBankEle = document.getElementById('set-bank')
+let mapBankEle = document.getElementById('map-bank')
 
 let palI = 0
 let colI = 0
@@ -132,6 +135,7 @@ function serializeProject() {
 	for (let pal of pals) {
 		len += 1 + pal.name.length
 		len += 1 // export flags
+		if ((pal.flags & DATA_FLAGS.HAS_BANK) != 0) len += 1
 		for (let color of pal.colors) {
 			len += 3 // color RGB
 		}
@@ -140,6 +144,7 @@ function serializeProject() {
 	for (let set of sets) {
 		len += 1 + set.name.length
 		len += 1 // export flags
+		if ((set.flags & DATA_FLAGS.HAS_BANK) != 0) len += 1
 		for (let tile of set.tiles) {
 			len += 1 // palette index
 			len += 64 / 2 // color indices
@@ -149,6 +154,7 @@ function serializeProject() {
 	for (let map of maps) {
 		len += 1 + map.name.length
 		len += 1 // export flags
+		if ((map.flags & DATA_FLAGS.HAS_BANK) != 0) len += 1
 		len += 1 // tileset index
 		for (let tile of map.tiles) {
 			len += 1 // tile index
@@ -170,6 +176,7 @@ function serializeProject() {
 		a.set(new TextEncoder().encode(pal.name), i)
 		i += pal.name.length
 		a[i++] = pal.flags
+		if ((pal.flags & DATA_FLAGS.HAS_BANK) != 0) a[i++] = pal.bank
 		for (let color of pal.colors) {
 			a[i++] = color[0]
 			a[i++] = color[1]
@@ -182,6 +189,7 @@ function serializeProject() {
 		a.set(new TextEncoder().encode(set.name), i)
 		i += set.name.length
 		a[i++] = set.flags
+		if ((set.flags & DATA_FLAGS.HAS_BANK) != 0) a[i++] = set.bank
 		for (let tile of set.tiles) {
 			a[i++] = tile.pal
 			for (let j = 0; j < 64; j += 2) {
@@ -195,6 +203,7 @@ function serializeProject() {
 		a.set(new TextEncoder().encode(map.name), i)
 		i += map.name.length
 		a[i++] = map.flags
+		if ((map.flags & DATA_FLAGS.HAS_BANK) != 0) a[i++] = map.bank
 		a[i++] = map.set
 		for (let tile of map.tiles) {
 			a[i++] = tile.tile
@@ -232,6 +241,7 @@ function deserializeProject(a) {
 		i += len
 		pal.updateLabel()
 		pal.flags = a[i++]
+		if ((pal.flags & DATA_FLAGS.HAS_BANK) != 0) pal.bank = a[i++]
 		for (let k = 0; k < 4; k++) {
 			pal.colors[k][0] = a[i++]
 			pal.colors[k][1] = a[i++]
@@ -249,6 +259,7 @@ function deserializeProject(a) {
 		i += len
 		set.updateLabel()
 		set.flags = a[i++]
+		if ((set.flags & DATA_FLAGS.HAS_BANK) != 0) set.bank = a[i++]
 		for (let k = 0; k < 128; k++) {
 			let tile = set.tiles[k]
 			tile.pal = a[i++]
@@ -270,6 +281,7 @@ function deserializeProject(a) {
 		i += len
 		map.updateLabel()
 		map.flags = a[i++]
+		if ((map.flags & DATA_FLAGS.HAS_BANK) != 0) map.bank = a[i++]
 		map.set = a[i++]
 		for (let k = 0; k < 1024; k++) {
 			let tile = map.tiles[k]
@@ -535,6 +547,7 @@ function selectPalette(index) {
 	palI = index
 	palNameEle.value = pals[index].name
 	palFlagsExportEle.checked = (pals[index].flags & DATA_FLAGS.EXPORT) != 0
+	palBankEle.value = (pals[index].flags & DATA_FLAGS.HAS_BANK) != 0 ? pals[index].bank : -1
 	selectColor(colI)
 	updatePaletteCanvas()
 }
@@ -557,6 +570,7 @@ function selectSet(index) {
 	setI = index
 	setNameEle.value = sets[index].name
 	setFlagsExportEle.checked = (sets[index].flags & DATA_FLAGS.EXPORT) != 0
+	setBankEle.value = (sets[index].flags & DATA_FLAGS.HAS_BANK) != 0 ? sets[index].bank : -1
 	selectTile(tileI)
 	updateSetCanvas()
 }
@@ -572,6 +586,7 @@ function selectMap(index) {
 	mapNameEle.value = maps[index].name
 	mapFlagsExportTilesEle.checked = (maps[index].flags & DATA_FLAGS.EXPORT) != 0
 	mapFlagsExportAttribsEle.checked = (maps[index].flags & DATA_FLAGS.EXPORT2) != 0
+	mapBankEle.value = (maps[index].flags & DATA_FLAGS.HAS_BANK) != 0 ? maps[index].bank : -1
 	selectSet(maps[index].set)
 	selectUnderMap(-1)
 	updateMapCanvas()
@@ -746,6 +761,27 @@ function setMapExportAttribs(b) {
 	if (b) maps[mapI].flags |= DATA_FLAGS.EXPORT2
 	else maps[mapI].flags &= ~DATA_FLAGS.EXPORT2
 	mapFlagsExportAttribsEle.checked = (maps[mapI].flags & DATA_FLAGS.EXPORT2) != 0
+}
+
+function setPalBank(v) {
+	pals[palI].bank = v
+	if (v >= 0) pals[palI].flags |= DATA_FLAGS.HAS_BANK
+	else pals[palI].flags &= ~DATA_FLAGS.HAS_BANK
+	palBankEle.value = v
+}
+
+function setSetBank(v) {
+	sets[setI].bank = v
+	if (v >= 0) sets[setI].flags |= DATA_FLAGS.HAS_BANK
+	else sets[setI].flags &= ~DATA_FLAGS.HAS_BANK
+	setBankEle.value = v
+}
+
+function setMapBank(v) {
+	maps[mapI].bank = v
+	if (v >= 0) maps[mapI].flags |= DATA_FLAGS.HAS_BANK
+	else maps[mapI].flags &= ~DATA_FLAGS.HAS_BANK
+	mapBankEle.value = v
 }
 
 class ContextMenu {
@@ -1002,6 +1038,10 @@ palFlagsExportEle.addEventListener('change', e => setPalExport(e.target.checked)
 setFlagsExportEle.addEventListener('change', e => setSetExport(e.target.checked))
 mapFlagsExportTilesEle.addEventListener('change', e => setMapExportTiles(e.target.checked))
 mapFlagsExportAttribsEle.addEventListener('change', e => setMapExportAttribs(e.target.checked))
+
+palBankEle.addEventListener('change', e => setPalBank(e.target.value))
+setBankEle.addEventListener('change', e => setSetBank(e.target.value))
+mapBankEle.addEventListener('change', e => setMapBank(e.target.value))
 
 clearProject()
 insertPalette(0)
