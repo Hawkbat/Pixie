@@ -1,7 +1,167 @@
+
+class ContextMenu {
+	constructor(parent) {
+		this.parent = parent
+		parent.addEventListener('click', e => {
+			if (!this.isOpen()) {
+				if (contextMenu) contextMenu.close()
+				this.open()
+				e.stopPropagation()
+			}
+		})
+		document.body.addEventListener('click', e => {
+			if (this.isOpen()) this.close()
+		})
+		this.ele = document.createElement('menu')
+		let rect = parent.getBoundingClientRect()
+		let x = rect.left
+		let y = rect.top + rect.height
+		this.ele.style.left = `${x}px`
+		this.ele.style.top = `${y}px`
+	}
+	option(label, kbd, cb) {
+		let ele = document.createElement('li')
+		ele.addEventListener('click', ev => {
+			cb()
+			this.close()
+		})
+		window.addEventListener('keydown', ev => {
+			if (focus == FOCUS.NONE && ev.target == document.body && ev.key.toLowerCase() == kbd.toLowerCase()) {
+				cb()
+				this.close()
+				ev.preventDefault()
+			}
+		})
+		ele.innerHTML = `<span>${label}</span><span>${kbd}</span>`
+		this.ele.appendChild(ele)
+		return this
+	}
+	spacer() {
+		this.ele.appendChild(document.createElement('hr'))
+		return this
+	}
+	open() {
+		this.parent.classList.add('active')
+		document.body.appendChild(this.ele)
+		contextMenu = this
+		return this
+	}
+	close() {
+		this.parent.classList.remove('active')
+		this.ele.remove()
+		contextMenu = null
+		return this
+	}
+	isOpen() {
+		return this == contextMenu
+	}
+}
+
+class Palette {
+	constructor(index) {
+		this.index = index
+		this.name = ''
+		this.flags = DATA_FLAGS.EXPORT
+		this.colors = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
+		this.div = document.createElement('div')
+		this.div.className = 'pal'
+		this.div.addEventListener('click', e => selectPalette(this.index))
+		this.span = document.createElement('span')
+		this.div.appendChild(this.span)
+		this.label = document.createElement('label')
+		this.div.appendChild(this.label)
+		if (index >= palListEle.children.length) palListEle.appendChild(this.div)
+		else {
+			let c = palListEle.children[index]
+			palListEle.insertBefore(this.div, c)
+		}
+		this.updateSpan()
+		this.updateLabel()
+	}
+	updateSpan() {
+		this.span.textContent = byteToHex(this.index)
+	}
+	updateLabel() {
+		if (this.name) this.label.textContent = this.name
+		else this.label.innerHTML = '<i>Untitled</i>'
+	}
+}
+
+class Tileset {
+	constructor(index) {
+		this.index = index
+		this.name = ''
+		this.flags = DATA_FLAGS.EXPORT
+		this.tiles = []
+		for (let i = 0; i < 128; i++) {
+			let tile = { pal: 0, colors: [] }
+			for (let j = 0; j < 64; j++) tile.colors.push(0)
+			this.tiles.push(tile)
+		}
+		this.div = document.createElement('div')
+		this.div.className = 'set'
+		this.div.addEventListener('click', e => selectSet(this.index))
+		this.span = document.createElement('span')
+		this.div.appendChild(this.span)
+		this.label = document.createElement('label')
+		this.div.appendChild(this.label)
+		if (index >= setListEle.children.length) setListEle.appendChild(this.div)
+		else {
+			let c = setListEle.children[index]
+			setListEle.insertBefore(this.div, c)
+		}
+		this.updateSpan()
+		this.updateLabel()
+	}
+	updateSpan() {
+		this.span.textContent = byteToHex(this.index)
+	}
+	updateLabel() {
+		if (this.name) this.label.textContent = this.name
+		else this.label.innerHTML = '<i>Untitled</i>'
+	}
+}
+
+class Tilemap {
+	constructor(index) {
+		this.index = index
+		this.name = ''
+		this.flags = DATA_FLAGS.EXPORT | DATA_FLAGS.EXPORT2
+		this.set = 0
+		this.tiles = []
+		for (let i = 0; i < 1024; i++) this.tiles.push({ tile: 0, pal: 0 })
+		this.div = document.createElement('div')
+		this.div.className = 'map'
+		this.div.addEventListener('mousedown', e => {
+			if (e.buttons & 1) selectMap(this.index)
+			if (e.buttons & 2) selectUnderMap(this.index)
+		})
+		this.span = document.createElement('span')
+		this.div.appendChild(this.span)
+		this.label = document.createElement('label')
+		this.div.appendChild(this.label)
+		if (index >= setListEle.children.length) mapListEle.appendChild(this.div)
+		else {
+			let c = mapListEle.children[index]
+			mapListEle.insertBefore(this.div, c)
+		}
+		this.updateSpan()
+		this.updateLabel()
+	}
+	updateSpan() {
+		this.span.textContent = byteToHex(this.index)
+	}
+	updateLabel() {
+		if (this.name) this.label.textContent = this.name
+		else this.label.innerHTML = '<i>Untitled</i>'
+	}
+}
+
 let VERSION = 1
 let MODES = { GBC: 0 }
 let GBC_COLOR_SCALE = [0, 2, 4, 7, 12, 18, 25, 34, 42, 52, 62, 73, 85, 97, 109, 121, 134, 146, 158, 170, 182, 193, 203, 213, 221, 230, 237, 243, 248, 251, 253, 255]
 let DATA_FLAGS = { EXPORT: 1, EXPORT2: 2, HAS_BANK: 4 }
+let FOCUS = { NONE: 0, PALETTE: 1, TILESET: 2, TILE: 3, MAP: 4 }
 
 let contextMenu = null
 
@@ -58,6 +218,8 @@ let setI = 0
 let tileI = 0
 let mapI = 0
 let underMapI = -1
+
+let focus = FOCUS.NONE
 
 let projectName = ""
 let projectMode = MODES.GBC
@@ -535,6 +697,7 @@ function selectColor(index) {
 	colRRangeEle.value = colRValueEle.value = pals[palI].colors[colI][0]
 	colGRangeEle.value = colGValueEle.value = pals[palI].colors[colI][1]
 	colBRangeEle.value = colBValueEle.value = pals[palI].colors[colI][2]
+	setFocus(FOCUS.PALETTE)
 }
 
 function selectPalette(index) {
@@ -550,6 +713,7 @@ function selectPalette(index) {
 	palBankEle.value = (pals[index].flags & DATA_FLAGS.HAS_BANK) != 0 ? pals[index].bank : -1
 	selectColor(colI)
 	updatePaletteCanvas()
+	setFocus(FOCUS.PALETTE)
 }
 
 function selectTile(index) {
@@ -558,6 +722,7 @@ function selectTile(index) {
 	setSelectorEle.style.top = `${32 * Math.floor(index / 16)}px`
 	selectPalette(sets[setI].tiles[tileI].pal)
 	updateTileCanvas()
+	setFocus(FOCUS.TILE)
 }
 
 function selectSet(index) {
@@ -573,6 +738,7 @@ function selectSet(index) {
 	setBankEle.value = (sets[index].flags & DATA_FLAGS.HAS_BANK) != 0 ? sets[index].bank : -1
 	selectTile(tileI)
 	updateSetCanvas()
+	setFocus(FOCUS.TILESET)
 }
 
 function selectMap(index) {
@@ -590,6 +756,7 @@ function selectMap(index) {
 	selectSet(maps[index].set)
 	selectUnderMap(-1)
 	updateMapCanvas()
+	setFocus(FOCUS.MAP)
 }
 
 function selectUnderMap(index) {
@@ -601,6 +768,7 @@ function selectUnderMap(index) {
 	}
 	underMapI = index
 	updateMapCanvas()
+	setFocus(FOCUS.MAP)
 }
 
 function cloneColor(i) {
@@ -679,6 +847,21 @@ function fillTileColor(i, ci) {
 
 function setTilePalette(i) {
 	sets[setI].tiles[tileI].pal = i
+}
+
+function shiftTile(dx, dy) {
+	let cols = sets[setI].tiles[tileI].colors
+	let src = [...cols]
+	for (let y = 0; y < 8; y++) {
+		for (let x = 0; x < 8; x++) {
+			let srcI = y * 8 + x
+			let dstI = ((y + dy + 8) % 8) * 8 + ((x + dx + 8) % 8)
+			cols[dstI] = src[srcI]
+		}
+	}
+	updateSetCanvas()
+	updateTileCanvas()
+	updateMapCanvas()
 }
 
 function setMapTile(i, ti) {
@@ -784,162 +967,17 @@ function setMapBank(v) {
 	mapBankEle.value = v
 }
 
-class ContextMenu {
-	constructor(parent) {
-		this.parent = parent
-		parent.addEventListener('click', e => {
-			if (!this.isOpen()) {
-				if (contextMenu) contextMenu.close()
-				this.open()
-				e.stopPropagation()
-			}
-		})
-		document.body.addEventListener('click', e => {
-			if (this.isOpen()) this.close()
-		})
-		this.ele = document.createElement('menu')
-		let rect = parent.getBoundingClientRect()
-		let x = rect.left
-		let y = rect.top + rect.height
-		this.ele.style.left = `${x}px`
-		this.ele.style.top = `${y}px`
-	}
-	option(label, kbd, cb) {
-		let ele = document.createElement('li')
-		ele.addEventListener('click', ev => {
-			cb()
-			this.close()
-		})
-		window.addEventListener('keydown', ev => {
-			if (ev.target == document.body && ev.key.toLowerCase() == kbd.toLowerCase()) {
-				cb()
-				this.close()
-				ev.preventDefault()
-			}
-		})
-		ele.innerHTML = `<span>${label}</span><span>${kbd}</span>`
-		this.ele.appendChild(ele)
-		return this
-	}
-	spacer() {
-		this.ele.appendChild(document.createElement('hr'))
-		return this
-	}
-	open() {
-		this.parent.classList.add('active')
-		document.body.appendChild(this.ele)
-		contextMenu = this
-		return this
-	}
-	close() {
-		this.parent.classList.remove('active')
-		this.ele.remove()
-		contextMenu = null
-		return this
-	}
-	isOpen() {
-		return this == contextMenu
-	}
-}
-
-class Palette {
-	constructor(index) {
-		this.index = index
-		this.name = ''
-		this.flags = DATA_FLAGS.EXPORT
-		this.colors = [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]
-		this.div = document.createElement('div')
-		this.div.className = 'pal'
-		this.div.addEventListener('click', e => selectPalette(this.index))
-		this.span = document.createElement('span')
-		this.div.appendChild(this.span)
-		this.label = document.createElement('label')
-		this.div.appendChild(this.label)
-		if (index >= palListEle.children.length) palListEle.appendChild(this.div)
-		else {
-			let c = palListEle.children[index]
-			palListEle.insertBefore(this.div, c)
-		}
-		this.updateSpan()
-		this.updateLabel()
-	}
-	updateSpan() {
-		this.span.textContent = byteToHex(this.index)
-	}
-	updateLabel() {
-		if (this.name) this.label.textContent = this.name
-		else this.label.innerHTML = '<i>Untitled</i>'
-	}
-}
-
-class Tileset {
-	constructor(index) {
-		this.index = index
-		this.name = ''
-		this.flags = DATA_FLAGS.EXPORT
-		this.tiles = []
-		for (let i = 0; i < 128; i++) {
-			let tile = { pal: 0, colors: [] }
-			for (let j = 0; j < 64; j++) tile.colors.push(0)
-			this.tiles.push(tile)
-		}
-		this.div = document.createElement('div')
-		this.div.className = 'set'
-		this.div.addEventListener('click', e => selectSet(this.index))
-		this.span = document.createElement('span')
-		this.div.appendChild(this.span)
-		this.label = document.createElement('label')
-		this.div.appendChild(this.label)
-		if (index >= setListEle.children.length) setListEle.appendChild(this.div)
-		else {
-			let c = setListEle.children[index]
-			setListEle.insertBefore(this.div, c)
-		}
-		this.updateSpan()
-		this.updateLabel()
-	}
-	updateSpan() {
-		this.span.textContent = byteToHex(this.index)
-	}
-	updateLabel() {
-		if (this.name) this.label.textContent = this.name
-		else this.label.innerHTML = '<i>Untitled</i>'
-	}
-}
-
-class Tilemap {
-	constructor(index) {
-		this.index = index
-		this.name = ''
-		this.flags = DATA_FLAGS.EXPORT | DATA_FLAGS.EXPORT2
-		this.set = 0
-		this.tiles = []
-		for (let i = 0; i < 1024; i++) this.tiles.push({ tile: 0, pal: 0 })
-		this.div = document.createElement('div')
-		this.div.className = 'map'
-		this.div.addEventListener('mousedown', e => {
-			if (e.buttons & 1) selectMap(this.index)
-			if (e.buttons & 2) selectUnderMap(this.index)
-		})
-		this.span = document.createElement('span')
-		this.div.appendChild(this.span)
-		this.label = document.createElement('label')
-		this.div.appendChild(this.label)
-		if (index >= setListEle.children.length) mapListEle.appendChild(this.div)
-		else {
-			let c = mapListEle.children[index]
-			mapListEle.insertBefore(this.div, c)
-		}
-		this.updateSpan()
-		this.updateLabel()
-	}
-	updateSpan() {
-		this.span.textContent = byteToHex(this.index)
-	}
-	updateLabel() {
-		if (this.name) this.label.textContent = this.name
-		else this.label.innerHTML = '<i>Untitled</i>'
-	}
+function setFocus(f) {
+	focus = f
+	if (f == FOCUS.PALETTE) palCanvasEle.classList.add('focused')
+	else palCanvasEle.classList.remove('focused')
+	if (f == FOCUS.TILESET) setCanvasEle.classList.add('focused')
+	else setCanvasEle.classList.remove('focused')
+	if (f == FOCUS.TILE) tileCanvasEle.classList.add('focused')
+	else tileCanvasEle.classList.remove('focused')
+	if (f == FOCUS.MAP) mapCanvasEle.classList.add('focused')
+	else mapCanvasEle.classList.remove('focused')
+	if (document.activeElement) document.activeElement.blur()
 }
 
 document.addEventListener('contextmenu', e => {
@@ -961,6 +999,9 @@ function onPalMouseEvt(e) {
 		if (e.buttons & 2) cloneColor(i)
 	}
 	palTooltipEle.textContent = 'Cursor: $' + byteToHex(i) + '\n' + printColor(pals[palI].colors[i])
+	setFocus(FOCUS.PALETTE)
+	e.preventDefault()
+	e.stopPropagation()
 }
 palCanvasEle.addEventListener('mousedown', e => onPalMouseEvt(e))
 palCanvasEle.addEventListener('mousemove', e => onPalMouseEvt(e))
@@ -974,6 +1015,9 @@ function onSetMouseEvt(e) {
 		if (e.buttons & 2) cloneTile(i)
 	}
 	setTooltipEle.textContent = 'Cursor: $' + byteToHex(i) + ' (Low) or $' + byteToHex(i + 128) + ' (High) ($' + byteToHex(x) + ', $' + byteToHex(y) + ')'
+	setFocus(FOCUS.TILESET)
+	e.preventDefault()
+	e.stopPropagation()
 }
 setCanvasEle.addEventListener('mousedown', e => onSetMouseEvt(e))
 setCanvasEle.addEventListener('mousemove', e => onSetMouseEvt(e))
@@ -994,6 +1038,9 @@ function onTileMouseEvt(e) {
 		if (e.buttons & 2) selectColor(sets[setI].tiles[tileI].colors[i])
 	}
 	tileTooltipEle.textContent = 'Cursor: $' + byteToHex(i) + ' ($' + byteToHex(x) + ', $' + byteToHex(y) + ')'
+	setFocus(FOCUS.TILE)
+	e.preventDefault()
+	e.stopPropagation()
 }
 tileCanvasEle.addEventListener('mousedown', e => onTileMouseEvt(e))
 tileCanvasEle.addEventListener('mousemove', e => onTileMouseEvt(e))
@@ -1018,6 +1065,9 @@ function onMapMouseEvt(e) {
 		}
 	}
 	mapTooltipEle.textContent = 'Cursor: $' + byteToHex(i) + ' ($' + byteToHex(x) + ', $' + byteToHex(y) + ')'
+	setFocus(FOCUS.MAP)
+	e.preventDefault()
+	e.stopPropagation()
 }
 mapCanvasEle.addEventListener('mousedown', e => onMapMouseEvt(e))
 mapCanvasEle.addEventListener('mousemove', e => onMapMouseEvt(e))
@@ -1042,6 +1092,26 @@ mapFlagsExportAttribsEle.addEventListener('change', e => setMapExportAttribs(e.t
 palBankEle.addEventListener('change', e => setPalBank(e.target.value))
 setBankEle.addEventListener('change', e => setSetBank(e.target.value))
 mapBankEle.addEventListener('change', e => setMapBank(e.target.value))
+
+document.body.addEventListener('keydown', e => {
+	if (e.target == document.body) {
+		if (focus == FOCUS.TILE) {
+			if (e.key == 'ArrowLeft') shiftTile(-1, 0)
+			if (e.key == 'ArrowRight') shiftTile(1, 0)
+			if (e.key == 'ArrowUp') shiftTile(0, -1)
+			if (e.key == 'ArrowDown') shiftTile(0, 1)
+		}
+		if (focus != FOCUS.NONE) {
+			if (e.key == 'ArrowLeft' || e.key == 'ArrowRight' || e.key == 'ArrowUp' || e.key == 'ArrowDown') {
+				e.preventDefault()
+			}
+		}
+	}
+})
+
+document.body.addEventListener('mousedown', e => {
+	setFocus(FOCUS.NONE)
+})
 
 clearProject()
 insertPalette(0)

@@ -248,6 +248,10 @@ canvas {
 	pointer-events: none;
 }
 
+.focused {
+	outline: 1px solid #fff;
+}
+
 .tooltip {
 	position: absolute;
 	left: 0;
